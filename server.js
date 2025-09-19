@@ -95,7 +95,7 @@ app.post('/api/format-references', async (req, res) => {
   console.log('📚 REFERENCE FORMATTING REQUEST RECEIVED');
   
   try {
-    const { references } = req.body;
+    const { references } = req.body || {};
     
     if (!references || typeof references !== 'string') {
       console.log('❌ No references text provided');
