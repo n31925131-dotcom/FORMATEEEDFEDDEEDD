@@ -19,9 +19,6 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
-// Serve static files (our simple HTML frontend)
-app.use(express.static('public'));
-
 // Main formatting endpoint
 app.post('/api/format', upload.single('file'), async (req, res) => {
   console.log('🔥 FORMAT REQUEST RECEIVED');
@@ -499,6 +496,9 @@ app.get('/api/health', (req, res) => {
   console.log('🏥 Health check requested');
   res.json({ status: 'OK', message: 'FormatGenius Lite backend is running' });
 });
+
+// Serve static files (our simple HTML frontend) - MUST come after API routes
+app.use(express.static('public'));
 
 // Create uploads directory if it doesn't exist
 if (!fs.existsSync('uploads')) {
