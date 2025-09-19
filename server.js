@@ -93,6 +93,62 @@ app.post('/api/format', upload.single('file'), async (req, res) => {
   }
 });
 
+// NEW: Reference List Formatting Endpoint
+app.post('/api/format-references', async (req, res) => {
+  console.log('📚 REFERENCE FORMATTING REQUEST RECEIVED');
+  
+  try {
+    const { references } = req.body;
+    
+    if (!references || typeof references !== 'string') {
+      console.log('❌ No references text provided');
+      return res.status(400).json({ error: 'No references text provided' });
+    }
+    
+    console.log(`📚 References text length: ${references.length} characters`);
+    console.log(`📚 First 100 characters: "${references.substring(0, 100)}..."`);
+    
+    // Split references by newlines and filter out empty lines
+    const referenceLines = references.split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0);
+    
+    console.log(`📚 Found ${referenceLines.length} reference entries`);
+    
+    if (referenceLines.length === 0) {
+      return res.status(400).json({ error: 'No valid references found' });
+    }
+    
+    // Format each reference according to Harvard rules
+    console.log('📚 Applying Harvard formatting to references...');
+    const formattedReferences = referenceLines.map((ref, index) => {
+      console.log(`📚 Formatting reference ${index + 1}: ${ref.substring(0, 50)}...`);
+      return formatSingleReference(ref);
+    });
+    
+    // Create a new document with only the formatted references
+    console.log('📝 Creating reference list document...');
+    const referenceDoc = createReferenceListDocument(formattedReferences);
+    
+    // Generate the docx file
+    console.log('📦 Generating reference list DOCX buffer...');
+    const buffer = await Packer.toBuffer(referenceDoc);
+    console.log(`📦 Generated buffer size: ${buffer.length} bytes`);
+    
+    // Send the formatted reference list
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', 'attachment; filename=formatted-references-harvard.docx');
+    res.send(buffer);
+    
+    console.log('🎉 Reference list formatted and sent successfully');
+    
+  } catch (error) {
+    console.error('💥 ERROR formatting references:', error);
+    console.error('💥 Stack trace:', error.stack);
+    res.status(500).json({ error: 'Failed to format references: ' + error.message });
+  }
+});
+
 // Function to process text and replace URLs with citations
 function processTextForCitations(text) {
   console.log('🔗 Starting URL processing...');
@@ -352,6 +408,89 @@ function createFormattedDocument(text, style) {
   });
 
   console.log('📝 Document creation complete');
+  return doc;
+}
+
+// NEW: Function to create a document containing only formatted references
+function createReferenceListDocument(formattedReferences) {
+  console.log(`📝 Creating reference list document with ${formattedReferences.length} references...`);
+  
+  // Create the "References" title
+  const titleParagraph = new Paragraph({
+    children: [
+      new TextRun({
+        text: "References",
+        font: "Times New Roman",
+        size: 28, // 14pt for title
+        bold: true,
+      }),
+    ],
+    heading: HeadingLevel.HEADING_1,
+    spacing: {
+      line: 480, // Double spacing
+      after: 480, // Extra space after title
+    },
+    alignment: AlignmentType.CENTER,
+  });
+  
+  // Create paragraphs for each formatted reference
+  const referenceParagraphs = formattedReferences.map((ref, index) => {
+    console.log(`📝 Creating reference paragraph ${index + 1}`);
+    
+    return new Paragraph({
+      children: [
+        new TextRun({
+          text: ref,
+          font: "Times New Roman",
+          size: 24, // 12pt
+        }),
+      ],
+      spacing: {
+        line: 480, // Double spacing
+        after: 240, // Space after each reference
+      },
+      alignment: AlignmentType.LEFT,
+      indent: {
+        hanging: 720, // Hanging indent for references (0.5 inch = 720 twips)
+      },
+    });
+  });
+  
+  // Create the document
+  const doc = new Document({
+    styles: {
+      default: {
+        document: {
+          run: {
+            font: "Times New Roman",
+            size: 24,
+          },
+          paragraph: {
+            spacing: {
+              line: 480, // Double spacing
+            },
+          },
+        },
+      },
+    },
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 1440,    // 1 inch margins
+              right: 1440,
+              bottom: 1440,
+              left: 1440,
+            },
+          },
+        },
+        children: [titleParagraph, ...referenceParagraphs],
+      },
+    ],
+  });
+  
+  console.log('📝 Reference list document creation complete');
   return doc;
 }
 

@@ -104,6 +104,60 @@
             display: none;
         }
         
+        .separator {
+            margin: 50px 0 30px 0;
+            text-align: center;
+        }
+        
+        .separator hr {
+            border: none;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #ddd, transparent);
+            margin: 20px 0;
+        }
+        
+        .separator h2 {
+            color: #333;
+            font-size: 2em;
+            margin: 20px 0 10px 0;
+        }
+        
+        .section-description {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 0;
+        }
+        
+        .reference-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+            margin-bottom: 30px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            box-sizing: border-box;
+            resize: vertical;
+            min-height: 200px;
+        }
+        
+        textarea:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+        
+        textarea::placeholder {
+            color: #999;
+            font-style: italic;
+        }
+        
         .info {
             background-color: #e7f3ff;
             border: 1px solid #b3d9ff;
@@ -148,6 +202,31 @@
         
         <div id="status" class="hidden"></div>
         
+        <!-- NEW: Reference Generator Section -->
+        <div class="separator">
+            <hr>
+            <h2>Reference List Generator</h2>
+            <p class="section-description">Format your reference list separately with perfect Harvard styling</p>
+        </div>
+        
+        <div class="reference-section">
+            <div class="form-group">
+                <label for="referencesInput">Paste your raw references here (one per line):</label>
+                <textarea 
+                    id="referencesInput" 
+                    placeholder="Example:
+Smith, J. (2023). Understanding Academic Writing. Journal of Education, 45(2), 123-145.
+Brown, A. & Davis, M. (2022). Research Methods in Practice. Academic Press.
+Wilson, K. (2024). Modern Citation Styles. In Proceedings of Academic Conference, pp. 67-89."
+                    rows="8"
+                ></textarea>
+            </div>
+            
+            <button type="button" id="formatReferencesButton">Generate Reference List</button>
+            
+            <div id="referencesStatus" class="hidden"></div>
+        </div>
+        
         <div class="info">
             <h3>What this tool does:</h3>
             <ul>
@@ -156,8 +235,17 @@
                 <li>✅ <strong>CONVERTS</strong> URLs to simple citations (e.g., "example.com, 2024")</li>
                 <li>✅ <strong>ADDS</strong> a formatted title based on your chosen style</li>
                 <li>✅ <strong>SETS</strong> proper 1-inch margins</li>
+                <li>🆕 <strong>REFERENCE GENERATOR</strong> creates perfectly formatted reference lists</li>
             </ul>
             <p><strong>Note:</strong> This tool completely rebuilds your document with proper academic formatting. The output will be visually different from your input file. Upload a .docx file to test it!</p>
+            
+            <h3>Reference Generator Features:</h3>
+            <ul>
+                <li>✅ <strong>HARVARD FORMATTING</strong> - Converts & to "and", adds proper punctuation</li>
+                <li>✅ <strong>TITLE FORMATTING</strong> - Adds quotes to article titles, italics to journals</li>
+                <li>✅ <strong>CLEAN OUTPUT</strong> - Professional reference list document</li>
+                <li>✅ <strong>SEPARATE TOOL</strong> - Works independently from main formatter</li>
+            </ul>
         </div>
     </div>
 
@@ -167,6 +255,11 @@
         const styleSelect = document.getElementById('styleSelect');
         const formatButton = document.getElementById('formatButton');
         const status = document.getElementById('status');
+        
+        // Reference Generator Elements
+        const referencesInput = document.getElementById('referencesInput');
+        const formatReferencesButton = document.getElementById('formatReferencesButton');
+        const referencesStatus = document.getElementById('referencesStatus');
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -229,10 +322,68 @@
             }
         });
         
+        // Reference Generator Event Listener
+        formatReferencesButton.addEventListener('click', async () => {
+            const referencesText = referencesInput.value.trim();
+            
+            if (!referencesText) {
+                showReferencesStatus('Please paste your references in the text area.', 'error');
+                return;
+            }
+            
+            // Show processing status
+            showReferencesStatus('Formatting your reference list... Please wait.', 'processing');
+            formatReferencesButton.disabled = true;
+            
+            try {
+                // Send request to new references endpoint
+                const response = await fetch('/api/format-references', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ references: referencesText })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to format references');
+                }
+                
+                // Get the formatted reference list as a blob
+                const blob = await response.blob();
+                
+                // Create download link and trigger download
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'formatted-references-harvard.docx';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                // Show success message
+                showReferencesStatus('✅ Reference list formatted successfully! Your Harvard-style reference list has been generated with proper formatting. Download should start automatically.', 'success');
+                
+            } catch (error) {
+                console.error('Error formatting references:', error);
+                showReferencesStatus(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                formatReferencesButton.disabled = false;
+            }
+        });
+        
         function showStatus(message, type) {
             status.textContent = message;
             status.className = type;
             status.classList.remove('hidden');
+        }
+        
+        function showReferencesStatus(message, type) {
+            referencesStatus.textContent = message;
+            referencesStatus.className = type;
+            referencesStatus.classList.remove('hidden');
         }
         
         // Test backend connection on page load
