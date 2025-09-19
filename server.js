@@ -245,6 +245,9 @@ function fixReferenceList(text) {
 
 // Function to format a single reference according to Harvard rules
 function formatSingleReference(ref) {
+  console.log("[DEBUG] Formatting reference:", ref);
+  console.log("[DEBUG] Type of text:", typeof ref);
+  
   console.log(`📚 Formatting reference: ${ref.substring(0, 100)}...`);
   
   // Journal Article Pattern
