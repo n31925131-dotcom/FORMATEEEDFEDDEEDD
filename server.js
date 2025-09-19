@@ -90,59 +90,28 @@ app.post('/api/format', upload.single('file'), async (req, res) => {
   }
 });
 
-// NEW: Reference List Formatting Endpoint
-app.post('/api/format-references', async (req, res) => {
-  console.log('📚 REFERENCE FORMATTING REQUEST RECEIVED');
-  
+// REPLACE THE ENTIRE /api/format-references ENDPOINT WITH THIS CODE
+app.post('/api/format-references', (req, res) => {
+  console.log("✅ /api/format-references endpoint was called!"); // This log will prove we got here
   try {
-    const { references } = req.body || {};
-    
-    if (!references || typeof references !== 'string') {
-      console.log('❌ No references text provided');
-      return res.status(400).json({ error: 'No references text provided' });
-    }
-    
-    console.log(`📚 References text length: ${references.length} characters`);
-    console.log(`📚 First 100 characters: "${references.substring(0, 100)}..."`);
-    
-    // Split references by newlines and filter out empty lines
-    const referenceLines = references.split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0);
-    
-    console.log(`📚 Found ${referenceLines.length} reference entries`);
-    
-    if (referenceLines.length === 0) {
-      return res.status(400).json({ error: 'No valid references found' });
-    }
-    
-    // Format each reference according to Harvard rules
-    console.log('📚 Applying Harvard formatting to references...');
-    const formattedReferences = referenceLines.map((ref, index) => {
-      console.log(`📚 Formatting reference ${index + 1}: ${ref.substring(0, 50)}...`);
-      return formatSingleReference(ref);
+    // 1. Try to get the text from the request
+    const { text } = req.body || {};
+    console.log("📩 Received text:", text); // This log shows what was sent
+
+    // 2. IMMEDIATELY send back a simple SUCCESS message. Do not try to format anything.
+    res.json({
+      success: true,
+      message: "Endpoint connection is successful!",
+      receivedText: text // Echo back the text we received
     });
-    
-    // Create a new document with only the formatted references
-    console.log('📝 Creating reference list document...');
-    const referenceDoc = createReferenceListDocument(formattedReferences);
-    
-    // Generate the docx file
-    console.log('📦 Generating reference list DOCX buffer...');
-    const buffer = await Packer.toBuffer(referenceDoc);
-    console.log(`📦 Generated buffer size: ${buffer.length} bytes`);
-    
-    // Send the formatted reference list
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', 'attachment; filename=formatted-references-harvard.docx');
-    res.send(buffer);
-    
-    console.log('🎉 Reference list formatted and sent successfully');
-    
+
   } catch (error) {
-    console.error('💥 ERROR formatting references:', error);
-    console.error('💥 Stack trace:', error.stack);
-    res.status(500).json({ error: 'Failed to format references: ' + error.message });
+    // 3. If anything crashes, send a PROPER JSON error
+    console.error("❌ Error in endpoint:", error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
 });
 
